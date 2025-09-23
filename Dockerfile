@@ -27,4 +27,5 @@ COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8761
 
 # ✅ Disable system metrics to avoid CgroupInfo NPE in Docker
-ENTRYPOINT ["java", "-Dmanagement.metrics.binders.system.enabled=false", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Dspring.autoconfigure.exclude=org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration", "-jar", "app.jar"]
+
