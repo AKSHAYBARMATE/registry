@@ -20,9 +20,11 @@ RUN mvn clean package -DskipTests
 FROM openjdk:17-jdk-slim
 WORKDIR /app
 
+# Copy the built JAR from the build stage
 COPY --from=build /app/target/*.jar app.jar
 
+# Expose Eureka port
 EXPOSE 8761
 
-# Disable system metrics (fix the NPE)
+# ✅ Disable system metrics to avoid CgroupInfo NPE in Docker
 ENTRYPOINT ["java", "-Dmanagement.metrics.binders.system.enabled=false", "-jar", "app.jar"]
