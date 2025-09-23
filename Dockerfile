@@ -6,14 +6,12 @@
 FROM maven:3.8.7-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# First copy pom.xml and download dependencies (better cache)
+# Cache dependencies
 COPY pom.xml .
 RUN mvn dependency:go-offline
 
-# Copy the source code
+# Copy source and build
 COPY src src
-
-# Build the application (skip tests for faster builds)
 RUN mvn clean package -DskipTests
 
 # ======================
@@ -22,10 +20,9 @@ RUN mvn clean package -DskipTests
 FROM openjdk:17-jdk-slim
 WORKDIR /app
 
-# Copy only the built jar from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# *** Removed copying src/main/resources separately ***
-
 EXPOSE 8761
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Disable system metrics (fix the NPE)
+ENTRYPOINT ["java", "-Dmanagement.metrics.binders.system.enabled=false", "-jar", "app.jar"]
