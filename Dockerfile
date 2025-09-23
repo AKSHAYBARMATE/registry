@@ -29,5 +29,5 @@ COPY --from=build /app/target/*.jar app.jar
 # ✅ Copy Excel (and other resource) files to same path used in code
 COPY src/main/resources/ /app/src/main/resources/
 
-EXPOSE 8084
+EXPOSE 8761
 ENTRYPOINT ["java", "-jar", "app.jar"]
