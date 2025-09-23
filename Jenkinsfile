@@ -2,13 +2,13 @@ pipeline {
     agent any
 
     environment {
-        COMPOSE_FILE = "docker-compose.feemodule.yml"
-        REGISTRY_CONTAINER_NAME = "serviceregistry"
-        TARGET_SERVICE = "feemodule"
-        TARGET_CONTAINER_NAME = "feemodule" // container_name from your compose file
-        TARGET_IMAGE_NAME = "feemodule:latest" // image name from your compose file
+        CONTAINER_NAME = "serviceregistry"
+        IMAGE_NAME = "serviceregistry:latest"
+        DOCKERFILE_PATH = "." // adjust if Dockerfile is in a subdir
+        HOST_PORT = "8761"
+        CONTAINER_PORT = "8761" 
     }
-
+    
     stages {
         stage('Checkout') {
             steps {
@@ -19,33 +19,46 @@ pipeline {
         stage('Docker Version') {
             steps {
                 sh 'docker --version'
-                sh 'docker compose version'
             }
         }
 
-        stage('Check Registry and Run Service') {
+        stage('Build and Run ServiceRegistry') {
             steps {
                 script {
-                    def isRegistryRunning = sh(
-                        script: "docker ps -q -f name=${REGISTRY_CONTAINER_NAME}",
+                    // Stop and remove existing container if it's running
+                    def isRunning = sh(
+                        script: "docker ps -q -f name=${CONTAINER_NAME}",
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (isRunning) {
+                        echo "🛑 Container ${CONTAINER_NAME} is running. Stopping and removing..."
+                        sh "docker rm -f ${CONTAINER_NAME}"
+                    }
+
+                    // Remove old image if it exists
+                    def imageExists = sh(
+                        script: "docker images -q ${IMAGE_NAME}",
                         returnStdout: true
                     ).trim()
 
-                    if (isRegistryRunning) {
-                        echo "${REGISTRY_CONTAINER_NAME} is running. Proceeding to build and start ${TARGET_SERVICE}..."
-
-                        // Remove existing container
-                        sh "docker rm -f ${TARGET_CONTAINER_NAME} || true"
-
-                        // Remove existing image
-                        sh "docker rmi -f ${TARGET_IMAGE_NAME} || true"
-
-                        // Build and run the service
-                        sh "docker compose -f ${COMPOSE_FILE} build ${TARGET_SERVICE}"
-                        sh "docker compose -f ${COMPOSE_FILE} up -d ${TARGET_SERVICE}"
-                    } else {
-                        error "${REGISTRY_CONTAINER_NAME} is not running. Aborting deployment of ${TARGET_SERVICE}."
+                    if (imageExists) {
+                        echo "🧹 Removing existing image ${IMAGE_NAME}..."
+                        sh "docker rmi -f ${IMAGE_NAME}"
                     }
+
+                    // Build new Docker image
+                    echo "🐳 Building Docker image ${IMAGE_NAME}..."
+                    sh "docker build -t ${IMAGE_NAME} ${DOCKERFILE_PATH}"
+
+                    // Run container
+                    echo "🚀 Starting container ${CONTAINER_NAME}..."
+                    sh """
+                        docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        -p ${HOST_PORT}:${CONTAINER_PORT} \
+                        ${IMAGE_NAME}
+                    """
                 }
             }
         }
