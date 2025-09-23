@@ -25,9 +25,7 @@ WORKDIR /app
 # Copy only the built jar from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-
-# ✅ Copy Excel (and other resource) files to same path used in code
-COPY src/main/resources/ /app/src/main/resources/
+# *** Removed copying src/main/resources separately ***
 
 EXPOSE 8761
 ENTRYPOINT ["java", "-jar", "app.jar"]
