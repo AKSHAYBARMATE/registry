@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "registry"
-        CONTAINER_NAME = "adminserviceregistry"
+        IMAGE_NAME = "schoolregistry"
+        CONTAINER_NAME = "serviceregistry"
         DOCKER_NETWORK = "updated_orgadmin_rmscadminnetwork"
         HOST_PORT = "8761"
         CONTAINER_PORT = "8761"
