@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        CONTAINER_NAME = "serviceregistry"
-        IMAGE_NAME = "serviceregistry:latest"
+        CONTAINER_NAME = "schoolregistry"
+        IMAGE_NAME = "schoolregistry:latest"
         DOCKERFILE_PATH = "." // adjust if Dockerfile is in a subdir
         HOST_PORT = "8761"
         CONTAINER_PORT = "8761" 
@@ -22,7 +22,7 @@ pipeline {
             }
         }
 
-        stage('Build and Run ServiceRegistry') {
+        stage('Build and Run schoolregistry') {
             steps {
                 script {
                     // Stop and remove existing container if it's running
