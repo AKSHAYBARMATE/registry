@@ -2,13 +2,13 @@ pipeline {
     agent any
 
     environment {
-        CONTAINER_NAME = "schoolregistry"
-        IMAGE_NAME = "schoolregistry:latest"
-        DOCKERFILE_PATH = "." // adjust if Dockerfile is in a subdir
+        IMAGE_NAME = "registry"
+        CONTAINER_NAME = "adminserviceregistry"
+        DOCKER_NETWORK = "updated_orgadmin_rmscadminnetwork"
         HOST_PORT = "8761"
-        CONTAINER_PORT = "8761" 
+        CONTAINER_PORT = "8761"
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
@@ -22,44 +22,41 @@ pipeline {
             }
         }
 
-        stage('Build and Run schoolregistry') {
+        stage('Clean Old Docker Image') {
             steps {
-                script {
-                    // Check for any container with the same name (running or stopped)
-                    def containerExists = sh(
-                        script: "docker ps -a -q -f name=^/${CONTAINER_NAME}\$",
-                        returnStdout: true
-                    ).trim()
+                echo "Removing old Docker image if it exists..."
+                sh "docker rmi -f ${IMAGE_NAME}:latest || true"
+            }
+        }
 
-                    if (containerExists) {
-                        echo "🛑 Removing existing container ${CONTAINER_NAME}..."
-                        sh "docker rm -f ${CONTAINER_NAME}"
-                    }
+        stage('Build Docker Image') {
+            steps {
+                echo "Building Docker image..."
+                sh "docker build -t ${IMAGE_NAME}:latest ."
+            }
+        }
 
-                    // Remove old image if it exists
-                    def imageExists = sh(
-                        script: "docker images -q ${IMAGE_NAME}",
-                        returnStdout: true
-                    ).trim()
+        stage('Stop & Remove Old Container') {
+            steps {
+                sh """
+                    docker stop ${CONTAINER_NAME} || true
+                    docker rm ${CONTAINER_NAME} || true
+                """
+            }
+        }
 
-                    if (imageExists) {
-                        echo "🧹 Removing existing image ${IMAGE_NAME}..."
-                        sh "docker rmi -f ${IMAGE_NAME}"
-                    }
-
-                    // Build new Docker image
-                    echo "🐳 Building Docker image ${IMAGE_NAME}..."
-                    sh "docker build -t ${IMAGE_NAME} ${DOCKERFILE_PATH}"
-
-                    // Run container
-                    echo "🚀 Starting container ${CONTAINER_NAME}..."
-                    sh """
-                        docker run -d \
-                        --name ${CONTAINER_NAME} \
-                        -p ${HOST_PORT}:${CONTAINER_PORT} \
-                        ${IMAGE_NAME}
-                    """
-                }
+        stage('Run Docker Container') {
+            steps {
+                sh """
+                    docker run -d --name ${CONTAINER_NAME} \\
+                        -p ${HOST_PORT}:${CONTAINER_PORT} \\
+                        --network ${DOCKER_NETWORK} \\
+                        -e EUREKA_SERVER_ENABLE_SELF_PRESERVATION=false \\
+                        -e EUREKA_SERVER_EVICTION_INTERVAL_TIMER_IN_MS=5000 \\
+                        -e EUREKA_CLIENT_REGISTER_WITH_EUREKA=false \\
+                        -e EUREKA_CLIENT_FETCH_REGISTRY=false \\
+                        ${IMAGE_NAME}:latest
+                """
             }
         }
     }
