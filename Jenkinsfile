@@ -25,14 +25,14 @@ pipeline {
         stage('Build and Run schoolregistry') {
             steps {
                 script {
-                    // Stop and remove existing container if it's running
-                    def isRunning = sh(
-                        script: "docker ps -q -f name=${CONTAINER_NAME}",
+                    // Check for any container with the same name (running or stopped)
+                    def containerExists = sh(
+                        script: "docker ps -a -q -f name=^/${CONTAINER_NAME}\$",
                         returnStdout: true
                     ).trim()
-                    
-                    if (isRunning) {
-                        echo "🛑 Container ${CONTAINER_NAME} is running. Stopping and removing..."
+
+                    if (containerExists) {
+                        echo "🛑 Removing existing container ${CONTAINER_NAME}..."
                         sh "docker rm -f ${CONTAINER_NAME}"
                     }
 
