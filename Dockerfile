@@ -3,36 +3,35 @@
 # ======================
 # Build stage
 # ======================
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+FROM maven:3.8.7-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Pre-download dependencies for layer caching
+# Cache dependencies
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:go-offline
 
-# Copy source and build the application
-COPY src ./src
-RUN mvn clean package -DskipTests -B
+# Copy source and build
+COPY src src
+RUN mvn clean package -DskipTests
 
 # ======================
 # Run stage
 # ======================
-FROM eclipse-temurin:17.0.8_7-jdk-jammy as runtime
-# Alternatively: FROM gcr.io/distroless/java17-debian11
-
+FROM openjdk:17-jdk-slim
 WORKDIR /app
 
-# Copy the fat JAR from the build stage
+# Copy the built JAR from the build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Expose Eureka server port
+# Expose Eureka port
 EXPOSE 8761
 
-# JVM options:
-# - Disables metrics that trigger CgroupInfo bug
-# - Improves startup time with tiered compilation
-ENTRYPOINT ["java", 
-  "-XX:+TieredCompilation", 
-  "-Dspring.autoconfigure.exclude=org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration", 
-  "-Dmanagement.metrics.export.defaults.enabled=false", 
-  "-jar", "app.jar"]
+# ✅ Safe and readable entrypoint to avoid system metrics NPE in Docker environments
+ENTRYPOINT [
+  "java",
+  "-XX:+TieredCompilation",
+  "-Dspring.autoconfigure.exclude=org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration",
+  "-Dmanagement.metrics.export.defaults.enabled=false",
+  "-jar",
+  "app.jar"
+]
