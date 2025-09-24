@@ -45,8 +45,19 @@ pipeline {
             }
         }
 
+        stage('Ensure Docker Network Exists') {
+            steps {
+                echo "Checking if Docker network '${DOCKER_NETWORK}' exists..."
+                sh """
+                    docker network inspect ${DOCKER_NETWORK} > /dev/null 2>&1 || \\
+                    docker network create ${DOCKER_NETWORK}
+                """
+            }
+        }
+
         stage('Run Docker Container') {
             steps {
+                echo "Running container '${CONTAINER_NAME}' on network '${DOCKER_NETWORK}'..."
                 sh """
                     docker run -d --name ${CONTAINER_NAME} \\
                         -p ${HOST_PORT}:${CONTAINER_PORT} \\
