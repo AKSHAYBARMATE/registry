@@ -3,7 +3,7 @@
 # ======================
 # Build stage
 # ======================
-FROM maven:3.8.7-eclipse-temurin-17 AS build
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Cache dependencies
@@ -17,21 +17,16 @@ RUN mvn clean package -DskipTests
 # ======================
 # Run stage
 # ======================
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:21-jdk-jammy as runtime
 WORKDIR /app
 
-# Copy the built JAR from the build stage
+# Copy the built JAR
 COPY --from=build /app/target/*.jar app.jar
 
-# Expose Eureka port
+# Expose Eureka default port
 EXPOSE 8761
 
-# ✅ Safe and readable entrypoint to avoid system metrics NPE in Docker environments
-ENTRYPOINT [
-  "java",
-  "-XX:+TieredCompilation",
-  "-Dspring.autoconfigure.exclude=org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration",
-  "-Dmanagement.metrics.export.defaults.enabled=false",
-  "-jar",
-  "app.jar"
-]
+# ✅ Fix for CgroupInfo NPE in Docker (metrics auto-config disabled)
+ENTRYPOINT java \
+  -Dspring.autoconfigure.exclude=org.springframework.boot.actuate.autoconfigure.metrics.SystemMetricsAutoConfiguration \
+  -jar app.jar
